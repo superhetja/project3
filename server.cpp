@@ -1,4 +1,5 @@
-//
+//I'm not sure what you mean. You figure out the IP and port (IP of skel and port by looking at the output of ps aux|grep tsam) and the write some code that opens a socket and calls connect with that IP/port. This should not have anything to do with windows or terminal.
+// 4001 - 4005
 // Simple chat server for TSAM-409
 //
 // Command line: ./chat_server 4000 
@@ -147,8 +148,45 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 
 }
 
-// Process command from client on the server
+void connectToServer(std::string ip,int portno )
+{
+	struct sockaddr_in serv_addr;
+	int serverSocket;
+	int set = 1;                              // Toggle for setsockopt
 
+	sockaddr socket_address;
+  sockaddr_in *socket_in = (sockaddr_in*)&socket_address;
+	socket_in->sin_family = AF_INET;
+	socket_in->sin_port = htons(portno);
+	socket_in->sin_addr.s_addr = inet_addr(ip.c_str());
+
+	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+	if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+	{
+       printf("Failed to set SO_REUSEADDR for port %d\n", portno);
+       perror("setsockopt failed: ");
+	}
+
+	if(connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr) )< 0)
+	{
+		// EINPROGRESS means that the connection is still being setup. Typically this
+		// only occurs with non-blocking sockets. (The serverSocket above is explicitly
+		// not in non-blocking mode, so this check here is just an example of how to
+		// handle this properly.)
+		if(errno != EINPROGRESS)
+		{
+			printf("Failed to open socket to server: %s\n", ip.c_str());
+			perror("Connect failed: ");
+			exit(0);
+		}
+	}
+	std::cout << "Connected to server:" << std::endl;
+	clients[portno] = new Client(serverSocket);
+
+}
+
+// Process command from client on the server
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, 
                   char *buffer) 
 {
@@ -161,9 +199,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   while(stream >> token)
       tokens.push_back(token);
 
-  if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
+	// connect to skel instructor server
+	// CONNECT 103.203.4.4 4055
+  if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3))
   {
-     clients[clientSocket]->name = tokens[1];
+    connectToServer(tokens[1], stoi(tokens[2]) );
   }
   else if(tokens[0].compare("LEAVE") == 0)
   {
@@ -234,11 +274,12 @@ int main(int argc, char* argv[])
     fd_set readSockets;             // Socket list for select()        
     fd_set exceptSockets;           // Exception socket list
     int maxfds;                     // Passed to select() as max fd in set
+		int nwrite;                               // No. bytes written to server
     struct sockaddr_in client;
     socklen_t clientLen;
     char buffer[1025];              // buffer for reading from clients
 
-    if(argc != 2)
+    if(argc < 2)
     {
         printf("Usage: chat_server <ip port>\n");
         exit(0);
@@ -262,7 +303,67 @@ int main(int argc, char* argv[])
         maxfds = listenSock;
     }
 
-    finished = false;
+	// connect to server
+	struct sockaddr_in serv_addr;
+	int serverSocket;
+	int set = 1;                              // Toggle for setsockopt
+
+	// sockaddr socket_address;
+  // sockaddr_in *socket_in = (sockaddr_in*)&socket_address;
+	// socket_in->sin_family = AF_INET;
+	// socket_in->sin_port = htons(atoi(argv[3]));
+	// socket_in->sin_addr.s_addr = inet_addr(argv[2]);
+	// sockaddr socket_address;
+  // sockaddr_in *socket_in = (sockaddr_in*)&socket_address;
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(atoi(argv[3]));
+	serv_addr.sin_addr.s_addr = inet_addr(argv[2]);
+
+	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+	{
+       printf("Failed to set SO_REUSEADDR for port %s\n", argv[3]);
+       perror("setsockopt failed: ");
+
+	}
+	std::cout << "here" << std::endl;
+
+	if(connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr) )< 0)
+	{
+		// EINPROGRESS means that the connection is still being setup. Typically this
+		// only occurs with non-blocking sockets. (The serverSocket above is explicitly
+		// not in non-blocking mode, so this check here is just an example of how to
+		// handle this properly.)
+		if(errno != EINPROGRESS)
+		{
+			printf("Failed to open socket to server: %s\n", argv[2]);
+			perror("Connect failed: ");
+			exit(0);
+		}
+	} else {
+		// connection did not fail..
+		clients[serverSocket] = new Client(serverSocket);
+		// send message to server...
+		memset(buffer, 0, sizeof(buffer));
+		strcpy(buffer, "\x02QUERYSERVERS,P3_GROUP_80\x03");
+		nwrite = send(serverSocket, buffer, strlen(buffer),0);
+
+		if(nwrite  == -1)
+		{
+			perror("send() to server failed: ");
+			exit(0);
+		}
+		memset(buffer, 0, sizeof(buffer));
+		read(serverSocket, buffer, sizeof(buffer));
+		std::cout << buffer << std::endl;
+	}
+
+
+
+
+	finished = false;
+		
+		
 
     while(!finished)
     {

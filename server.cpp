@@ -258,6 +258,39 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
           }
       }
   }
+  else if(tokens[0].compare("QUERYSERVERS") == 0 && (tokens.size() == 2)){
+      //Reply with the SERVERS response (below)
+    	//This should be the first message sent by any server,
+      //after it connects to another server.
+			// See more in p3
+			std::cout << "QUERYSERVERS" << std::endl;
+  }
+	else if(tokens[0].compare("KEEPALIVE") == 0 && (tokens.size() == 2)){
+    //Periodic message to 1-hop connected servers, indicating the number of messages the server sending the
+		//KEEPALIVE message has waiting for the receiver. Do
+		//not send more than once per minute.
+		std::cout << "KEEPALIVE" << std::endl;
+  }
+	else if(tokens[0].compare("FETCH_MSGS") == 0 && (tokens.size() == 2)){
+    //Request messages for the specified group. This may
+		//be for your own group, or another group
+		std::cout << "FETCH_MSGS" << std::endl;
+  }
+	else if(tokens[0].compare("SEND_MSG") ==0 && (tokens.size() == 4)){
+		//Send a message to another group
+		std::cout << "SEND_MSG" << std::endl;
+	}
+	else if(tokens[0].compare("STATUSREQ") ==0 && (tokens.size() == 2)){
+		//Request an overview of the messages held by the
+		//server. Reply with STATUSRESP as below
+		std::cout << "STATUSREQ" << std::endl;
+	}
+	else if(tokens[0].compare("STATUSRESP") ==0 && (tokens.size() == 4)){
+		//Send a comma separated list of groups and no. of
+		//messages you have for them
+		//eg. STATUSRESP,P3 GROUP 2,I 1,P3 GROUP4,20,P3 GROUP71,2
+		std::cout << "STATUSRESP" << std::endl;
+	}
   else
   {
       std::cout << "Unknown command from client:" << buffer << std::endl;

@@ -9,3 +9,10 @@ Tue Oct 26 13:16:24 2021
 
 “Writing in C or C++ is like running a chain saw with all the safety guards removed.”
 Bob Gray 
+Tue Oct 26 16:09:45 2021
+ SEND_MSG,P3_GROUP_80,ORACLE,
+
+Tue Oct 26 19:23:46 2021
+ SEND_MSG,P3_GROUP_80,Instr_3,I guess you know that messages need to start with STX () and end with ETX ().
+Tue Oct 26 19:27:57 2021
+ SEND_MSG,P3_GROUP_80,P3_GROUP_11,hello can you reply to this message from group 11?

@@ -1,4 +1,3 @@
-//I'm not sure what you mean. You figure out the IP and port (IP of skel and port by looking at the output of ps aux|grep tsam) and the write some code that opens a socket and calls connect with that IP/port. This should not have anything to do with windows or terminal.
 // 4001 - 4005
 // parsing use regex
 // Simple chat server for TSAM-409
@@ -134,17 +133,18 @@ void writeToFile(std::string buffer) {
 void sendQueryserversReq(int socket){
 	std::string msg = "QUERYSERVERS," + GROUP_ID + "," + IP + "," + PORT + ";";
 	msg = wrapString(msg);
+	std::cout << "SENDING: " << msg << std::endl;
 	send(socket, msg.c_str(), msg.length(), 0);
 
 }
 
 void sendServersRes(int socket) {
-	std::string msg = "SERVERS," + GROUP_ID + "," + IP + "," + PORT;
+	std::string msg = "SERVERS," + GROUP_ID + "," + IP + "," + PORT + ";";
 	for(auto const &pair: servers) {
 		msg += pair.second->name + "," + pair.second->ip + "," + pair.second->port + ";";
 	}
 	msg = wrapString(msg);
-	std::cout << msg << std::endl;
+	std::cout << "SENDING: " << msg << std::endl;
 	send(socket, msg.c_str(), msg.length(), 0);
 }
 
@@ -175,6 +175,7 @@ void cSendMessage(std::string group, std::string message) {
 
 	std::string msg = "SEND_MSG," + group + "," + GROUP_ID + "," + message;
 	msg = wrapString(msg);
+	std::cout << "SENDING: " << msg << std::endl;
 	for( auto const &pair : servers ) {
 		if (pair.second->name == group) {
 			send(pair.second->sock, msg.c_str(), msg.length(), 0);
@@ -185,6 +186,7 @@ void cSendMessage(std::string group, std::string message) {
 void fetchMessage(std::string group) {
 	std::string msg = "FETCH_MSGS," + GROUP_ID;
 	msg = wrapString(msg);
+	std::cout << "SENDING: " << msg << std::endl;
 	for( auto const &pair : servers ) {
 		if (pair.second->name == group) {
 			send(pair.second->sock, msg.c_str(), msg.length(), 0);
@@ -357,6 +359,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, char *buffer)
 			if (maxServerReached()) {
 				printf("Received SERVERS message but we are full we do not need to connect to more servers\n");
 			} else {
+				printf("Received SERVERS connecting to more servers\n");
 				connectToMoreServers(buffer, openSockets);
 			}
 		}
@@ -393,8 +396,8 @@ int connectToServer(std::string ip,int portno, fd_set *openSockets)
 	}
 
 	if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
-	{
-       	printf("Failed to set SO_REUSEADDR for port %d\n", portno);
+	{ 
+       	printf("Failed to set SO_REUSEADDR for> port %d\n", portno);
        	perror("setsockopt failed: ");
 		return -1;
 	}
@@ -419,7 +422,7 @@ int connectToServer(std::string ip,int portno, fd_set *openSockets)
 	// create new Server here since isntructior server doesn't send ip and port
 	servers[serverSocket] = new Server(serverSocket);
 	servers[serverSocket]->ip = ip;
-	servers[serverSocket]->port = portno;
+	servers[serverSocket]->port = std::to_string(portno);
 
 	memset(buffer, 0, sizeof(buffer));
 	//read the name, from the queryServers and set to servers
@@ -430,12 +433,6 @@ int connectToServer(std::string ip,int portno, fd_set *openSockets)
 
 	sendQueryserversReq(serverSocket);
 
-	memset(buffer, 0, sizeof(buffer));
-
-	recv(serverSocket, buffer, sizeof(buffer), MSG_DONTWAIT);
-	std::cout << buffer << std::endl;
-	printf("connecting to more servers\n");
-	connectToMoreServers(buffer, openSockets);
 
 
 
@@ -493,22 +490,28 @@ void connectToMoreServers(char *buffer, fd_set *openSockets) {
 
 	char *ip, *port, *name, *tptr;
 	int tmpSock;
-
+	// std::cout << "inside ConnectToMoreSErvers" << std::endl;
+	// std::cout << "Buffer: " << buffer << std::endl;
 	for(auto command : commands) {
-		std::vector<std::string> tokens;
+		// std::cout << "command: " << command << std::endl;
+		
 		std::string token, tmp;
 		// check if this is the SERVERS response..
 		if(command.find("SERVERS") != std::string::npos) {
 			std::stringstream stream(command);
 			// split on ;
-			while(std::getline(stream, tmp, ';') && !maxServerReached()) {
+			while(std::getline(stream, tmp, ';') && servers.size() < 3) {
+				std::vector<std::string> tokens;
+				// std::cout << "Server connecting to " << tmp << std::endl;
 				std::stringstream stream2(tmp);
 				// then split on , and put as token in tokens.
 				while(std::getline(stream2, token, ',')) {
 					tokens.push_back(token);
 				}
-				if(!(tokens[0].compare("SERVERS") == 0) && !serversContainName(tokens[0]) && !maxServerReached()) {
-					connectToServer(tokens[1], stoi(tokens[2]), openSockets);
+				if ( tokens.size() == 3) {
+					if(!(tokens[0].compare("SERVERS") == 0) && !serversContainName(tokens[0]) && servers.size() < 3) {
+						connectToServer(tokens[1], stoi(tokens[2]), openSockets);
+					}
 				}
 			}
 		}
@@ -634,9 +637,9 @@ int main(int argc, char* argv[])
 				memset(buffer, 0, sizeof(buffer));
 				
 				read(clientSock, buffer, sizeof(buffer));
+				sendQueryserversReq(clientSock);
 				serverCommand(clientSock, &openSockets, buffer);
 
-				sendQueryserversReq(clientSock);
 
 				// get the SERVERS respond
 				memset(buffer, 0, sizeof(buffer));

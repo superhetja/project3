@@ -52,7 +52,6 @@ void listenServer(int serverSocket)
        {
           printf("%s\n", buffer);
        }
-       printf("here\n");
     }
 }
 
@@ -120,18 +119,48 @@ int main(int argc, char* argv[])
        }
    }
 
+    std::string msg;
+    msg = wrapString("IM_CLIENT");
+    send(serverSocket,msg.c_str(), msg.length(),0);
     // Listen and print replies from server
    std::thread serverThread(listenServer, serverSocket);
 
    finished = false;
-   while(!finished)
-   {
-       bzero(buffer, sizeof(buffer));
+   printf("Welcome to the client\n");
+    int command;
+    int groupID;
+    std::string tmp;
 
-       fgets(buffer, sizeof(buffer), stdin);
-       std::string msg = wrapString(buffer);
+    while(!finished)
+    {
+        command = 0;
+        printf("Enter what command you want to do\n1. Fetch Message\n2. Send Message\n3. List Queryservers\n");
+        std::cin >> command;
+        if (command == 1){  
+            printf("Fetch a message, type group ID which you want to receive message from\n");
+            std::cin >> groupID;
+            msg = "FETCH_HMSG," + std::to_string(groupID);
+            msg = wrapString(msg);
+            nwrite = send(serverSocket, msg.c_str(), msg.length(),0);
+        }
+        else if (command == 2){
+            printf("Send a message, type group ID to which group you want to send message\n");
+            std::cin >> groupID;
 
-       nwrite = send(serverSocket, msg.c_str(), msg.length(),0);
+            printf("Type message: ");
+            std::cin >> tmp;
+            msg = "SEND_MSG," + std::to_string(groupID) + "," + tmp;
+            msg = wrapString(msg);
+            nwrite = send(serverSocket, msg.c_str(), msg.length(),0);
+            command = 0;
+        }
+        else if (command == 3){
+            printf("Listing Queryservers...\n");
+            msg = wrapString("QUERYSERVERS");
+            nwrite = send(serverSocket, msg.c_str(), msg.length(),0);
+
+        }
+        else{printf("Invalid command try again\n ");}
 
        if(nwrite  == -1)
        {

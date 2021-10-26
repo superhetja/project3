@@ -1,1 +1,40 @@
 130.208.243.61
+
+./tsampgroup80 4080 130.208.243.61 4003
+
+Ég connecta
+- fæ QUERYSERVERS
+    - svara SERVERS
+- sendi QUERYSERVERS
+    - fæ SERVERS
+
+
+Aðrir connecta
+- fæ QUERYSERVERS
+    - svara SERVERS
+- sendi QUERYSERVERS
+    - fæ SERVERS
+
+Í fæ  bý til 
+- servers[socket]
+Í sendi QUERYSERVERS
+- tek á móti servers 
+    tenist við fleirri servers ef þarf... (inní connectToMoreServers)
+
+
+connecta to ins servers
+- les frá ins -> QueryServers
+    serverCommands
+        býr to servers[socket]
+        sendir SERVERS...
+- sendir QUERYSERVERS
+- les SERVERS...
+- connectToMoreServers
+    splittar commands
+    fer í gengum listan og connectar aftur ef maxservers not reach & ekki tengd við.
+
+
+
+
+les frá ins servers
+connect to more servers.

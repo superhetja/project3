@@ -27,6 +27,10 @@
 #include <thread>
 #include <map>
 
+std::string wrapString(std::string msg) {
+	return '\x02' + msg + '\x03';
+}
+
 // Threaded function for handling responss from server
 
 void listenServer(int serverSocket)
@@ -125,8 +129,9 @@ int main(int argc, char* argv[])
        bzero(buffer, sizeof(buffer));
 
        fgets(buffer, sizeof(buffer), stdin);
+       std::string msg = wrapString(buffer);
 
-       nwrite = send(serverSocket, buffer, strlen(buffer),0);
+       nwrite = send(serverSocket, msg.c_str(), msg.length(),0);
 
        if(nwrite  == -1)
        {
